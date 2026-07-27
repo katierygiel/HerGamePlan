@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Her Game Plan — The Women Playmakers' Network</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #EDEAF2; }
+  * { box-sizing: border-box; }
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+/* ---------------------------------------------------------
+   ICONS (hand-built, no external icon package needed)
+--------------------------------------------------------- */
+function Icon({ paths, size = 24, color = "currentColor", strokeWidth = 2, fill = "none", viewBox = "0 0 24 24", style }) {
+  return (
+    <svg width={size} height={size} viewBox={viewBox} fill={fill} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={style}>
+      {paths}
+    </svg>
+  );
+}
+const Home = (p) => <Icon {...p} paths={<><path d="M3 11.5 12 4l9 7.5" /><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" /></>} />;
+const Target = (p) => <Icon {...p} paths={<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" fill={p.color || "currentColor"} /></>} />;
+const Lightbulb = (p) => <Icon {...p} paths={<><path d="M9 18h6" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1V17h6v-1.4c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z" /></>} />;
+const Briefcase = (p) => <Icon {...p} paths={<><rect x="3" y="7.5" width="18" height="12" rx="1.5" /><path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5" /><path d="M3 12.5h18" /></>} />;
+const MessageCircle = (p) => <Icon {...p} paths={<path d="M12 21c-4.97 0-9-3.58-9-8s4.03-8 9-8 9 3.58 9 8c0 1.55-.47 3-1.28 4.26L21 21l-4.5-1.32A9.6 9.6 0 0 1 12 21Z" />} />;
+const ArrowLeft = (p) => <Icon {...p} paths={<><path d="M19 12H5" /><path d="m11 18-6-6 6-6" /></>} />;
+const Plus = (p) => <Icon {...p} paths={<><path d="M12 5v14" /><path d="M5 12h14" /></>} />;
+const Minus = (p) => <Icon {...p} paths={<path d="M5 12h14" />} />;
+const ChevronRight = (p) => <Icon {...p} paths={<path d="m9 18 6-6-6-6" />} />;
+const Play = (p) => <Icon {...p} viewBox="0 0 24 24" paths={<path d="M7 4.5v15l13-7.5-13-7.5Z" />} />;
+const Check = (p) => <Icon {...p} paths={<path d="M20 6 9 17l-5-5" />} />;
+const Lock = (p) => <Icon {...p} paths={<><rect x="4" y="10.5" width="16" height="10" rx="2" /><path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" /></>} />;
+const Globe2 = (p) => <Icon {...p} paths={<><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.5 2.5 3.8 5.8 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.8-3.8-9S9.5 5.5 12 3Z" /></>} />;
+
+/* ---------------------------------------------------------
+   TOKENS
+--------------------------------------------------------- */
+const C = {
+  blitz: "#662D91",       // primary purple
+  blitzDark: "#4A1F6B",
+  blitzDeep: "#3A1854",
+  roster: "#233044",      // navy
+  tennis: "#7FB88F",      // green accent
+  tennisDeep: "#5C9970",
+  bleacher: "#8C8C8C",
+  bleacherLight: "#E9E7EF",
+  cream: "#FAF8FC",
+  ink: "#231A2E",
+};
+
+const FONT = `
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,500&display=swap');
+`;
+
+/* ---------------------------------------------------------
+   DATA
+--------------------------------------------------------- */
+const initialGoals = {
+  short: {
+    label: "SHORT TERM",
+    title: "Apply to 2 jobs today",
+    steps: [
+      { id: "s1", label: "Jr. Graphic Designer — NYY", done: true },
+      { id: "s2", label: "Jr. Graphic Designer — PHI", done: false },
+    ],
+    isPublic: false,
+  },
+  long: {
+    label: "LONG TERM",
+    title: "Complete Capstone Project",
+    steps: [
+      { id: "l1", label: "Project scope and goals", done: true },
+      { id: "l2", label: "Conduct research", done: true },
+      { id: "l3", label: "Develop a design brief", done: true },
+      { id: "l4", label: "Sketch and brainstorm", done: true },
+      { id: "l5", label: "Select design tools", done: true },
+      { id: "l6", label: "Create low-fidelity prototypes", done: true },
+      { id: "l7", label: "Test prototypes", done: true },
+      { id: "l8", label: "Refine prototypes", done: true },
+      { id: "l9", label: "Gather more feedback", done: true },
+      { id: "l10", label: "Create case study", done: false },
+      { id: "l11", label: "Final essay", done: false },
+      { id: "l12", label: "Presentation", done: false },
+    ],
+    isPublic: true,
+  },
+};
+
+const jobs = [
+  { id: "j1", title: "Graphic Designer", company: "Her Game Plan", hgp: true, location: "New York, NY", posted: "1 week ago", pay: "$50K/yr–$60K/yr", interests: 5, postedBy: "Carla Jennings" },
+  { id: "j2", title: "Jr. Graphic Designer", company: "Promotion Media", hgp: false, location: "Brooklyn, NY", posted: "3 days ago", pay: "$50K/yr", interests: 3, postedBy: "Emily Carter" },
+  { id: "j3", title: "Motion Graphics Intern", company: "NextPlay Digital", hgp: false, location: "Hoboken, NJ", posted: "1 day ago", pay: "$22/hr", interests: 4, postedBy: "Anonymous" },
+  { id: "j4", title: "Digital Design Assistant", company: "Champion Branding Co.", hgp: false, location: "Long Island, NY", posted: "1 month ago", pay: "$50K/yr", interests: 4, postedBy: "Anonymous" },
+  { id: "j5", title: "Graphic Design Assistant", company: "Victory Creative", hgp: false, location: "Manhattan, NY", posted: "5 days ago", pay: "$45K/yr", interests: 4, postedBy: "Jessica Thomas" },
+  { id: "j6", title: "Jr. Visual Communication Designer", company: "Courtvision Studios", hgp: false, location: "Manhattan, NY", posted: "2 weeks ago", pay: "$47K/yr", interests: 6, postedBy: "Anonymous" },
+];
+
+const currentInterests = ["Design", "Entry Level", "New York", "Photoshop", "Social Media", "Illustration"];
+const suggestedInterests = ["Web", "Marketing", "Video", "Branding", "Copywriting", "Photography", "Sports", "Motion Design", "UX/UI Design", "Public Relations", "App Development"];
+
+const articles = [
+  {
+    id: "a1",
+    title: "Balancing Work and Wellness: Self-Care Tips for Women in Sports Careers",
+    author: "Sarah Johnson",
+    role: "Head Athletic Trainer, USA Women's Basketball",
+    excerpt: "Practical strategies for managing the stress and physical demands of a sports career while maintaining a healthy work-life balance.",
+    body: [
+      "Working in professional sports, especially as a woman, can be incredibly rewarding, but it's also a fast-paced, high-pressure environment. When you're constantly managing players' injuries, coordinating team schedules, and attending to the needs of high-performance athletes, it can be easy to neglect your own wellness.",
+      "Prioritize Physical Activity — I've always been active, but working in a physically demanding environment has sometimes made it difficult to prioritize my own fitness. Whether it's a short walk or a restorative yoga session before bed, physical activity helps me recharge.",
+      "Set Boundaries — In sports, there's often an unspoken expectation to be \"on\" 24/7. I've learned that constantly saying yes to every request leads to burnout. Setting clear boundaries around work hours has been one of the most effective strategies I've used to protect my well-being.",
+      "Mental Health Matters — Journaling and talking with a therapist has been extremely helpful in managing work-related stress. Being able to process emotions outside of the workplace has helped me maintain a healthier perspective.",
+      "Build a Support System — Having a network of women who understand the unique challenges I face in sports has been invaluable. Ultimately, self-care isn't a luxury — it's a necessity.",
+    ],
+  },
+  {
+    id: "a2",
+    title: "Building a Personal Brand in Sports: How to Stand Out and Get Noticed",
+    author: "Olivia Carter",
+    role: "Sports Marketing Manager, Sports Apparel Company",
+    excerpt: "Ways to create a strong personal brand through social media, networking, and showcasing expertise.",
+    body: [
+      "Your personal brand is how the industry remembers you before you're even in the room. Start by getting specific about the intersection of what you're good at and what you care about.",
+      "Social media is your portfolio in motion. Post consistently about the work you're doing and the perspective you bring — not just wins, but process.",
+      "Networking is brand-building in real time. Every conversation, panel, or DM is a chance to reinforce what you stand for.",
+      "Showcase expertise generously. Sharing what you know builds trust faster than any resume line.",
+    ],
+  },
+  {
+    id: "a3",
+    title: "From Fan to Pro: How to Transition from a Passion for Sports to a Career",
+    author: "Isabella Tran",
+    role: "Marketing Manager, Sports Sponsorship",
+    excerpt: "How to leverage your love of sports into a meaningful and successful career in management, media, coaching, or behind-the-scenes.",
+    body: [
+      "Loving a sport and building a career around it are two different skill sets — the second one has to be learned deliberately.",
+      "Start by mapping the roles you don't see on TV: sponsorship, operations, analytics, content, community. That's where most entry points live.",
+      "Volunteer and intern relentlessly early on. Proximity to the industry teaches you its language faster than any course.",
+      "Your fandom is an asset — it's the reason you'll outwork people who took the job for less personal reasons. Use that.",
+    ],
+  },
+  {
+    id: "a4",
+    title: "Workplace Confidence: How to Speak Up and Own Your Space in Male-Dominated Environments",
+    author: "Jessica Evans",
+    role: "Head Coach, D1 NCAA Men's Basketball Team",
+    excerpt: "Tips for cultivating confidence and assertiveness, from negotiating salaries to contributing ideas in meetings.",
+    body: [
+      "Confidence in rooms that weren't built with you in mind is a practiced skill, not a personality trait you either have or don't.",
+      "Prepare your point before the meeting starts. Knowing exactly what you want to say removes the guesswork of speaking up in the moment.",
+      "Negotiate like it's part of the job, because it is. Come with numbers, not apologies.",
+      "Every time you take up space well, you make it a little easier for the next woman in the room.",
+    ],
+  },
+];
+
+const videoOfWeek = {
+  name: "Emily Parker",
+  role: "Sports Reporter",
+  location: "Toronto, Ontario",
+  series: "Journey to Today",
+  blurb: "In the Video of the Week, Emily Parker, a rising star in sports reporting and content creation, shares her journey from breaking into the male-dominated sports media world to becoming a trusted voice in the industry.",
+};
+
+/* ---------------------------------------------------------
+   SMALL COMPONENTS
+--------------------------------------------------------- */
+function Wave({ flip = false, style = {} }) {
+  // flip=false: purple below wave (used under a white header)
+  // flip=true: white/cream below wave (used under a purple header)
+  return (
+    <svg
+      viewBox="0 0 400 44"
+      preserveAspectRatio="none"
+      style={{ display: "block", width: "100%", height: 40, ...style }}
+    >
+      <path
+        d="M0,10 C90,42 160,-6 230,14 C300,34 340,4 400,16 L400,44 L0,44 Z"
+        fill={flip ? C.cream : C.blitz}
+      />
+    </svg>
+  );
+}
+
+function Logo({ size = 56, color = "#fff" }) {
+  return (
+    <svg width={size} height={size * 0.62} viewBox="0 0 220 136" fill="none">
+      <text x="0" y="60" fontFamily="Montserrat" fontWeight="900" fontSize="70" fill={color} stroke={color} strokeWidth="1">
+        HGP
+      </text>
+      <path d="M18 78 L40 66 L62 78" stroke={color} strokeWidth="3" fill="none" opacity="0.8" />
+      <circle cx="18" cy="80" r="4" stroke={color} strokeWidth="2" fill="none" opacity="0.8" />
+    </svg>
+  );
+}
+
+function Ring({ current, total, size = 108, label }) {
+  const r = size / 2 - 8;
+  const c = 2 * Math.PI * r;
+  const pct = total === 0 ? 0 : Math.min(current / total, 1);
+  return (
+    <svg width={size} height={size}>
+      <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.28)" strokeWidth="7" fill="none" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        stroke="#fff" strokeWidth="7" fill="none"
+        strokeDasharray={c}
+        strokeDashoffset={c - pct * c}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: "stroke-dashoffset 0.35s ease" }}
+      />
+      <text x="50%" y="47%" textAnchor="middle" fill="#fff" fontFamily="Montserrat" fontWeight="800" fontSize={size * 0.24} dominantBaseline="middle">
+        {label}
+      </text>
+    </svg>
+  );
+}
+
+function NavBar({ screen, go }) {
+  const items = [
+    { key: "home", icon: Home },
+    { key: "goals", icon: Target },
+    { key: "tips", icon: Lightbulb },
+    { key: "jobs", icon: Briefcase },
+    { key: "messages", icon: MessageCircle },
+  ];
+  return (
+    <div style={{ background: C.blitzDeep, display: "flex", justifyContent: "space-around", alignItems: "center", padding: "14px 8px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+      {items.map(({ key, icon: Icon }) => {
+        const active = screen === key;
+        return (
+          <button
+            key={key}
+            onClick={() => go(key)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: active ? "#fff" : "rgba(255,255,255,0.55)",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+              padding: 4,
+            }}
+          >
+            <Icon size={22} strokeWidth={active ? 2.4 : 2} />
+            {active && <div style={{ width: 4, height: 4, borderRadius: 99, background: "#fff" }} />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function TopBar({ title, onBack }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", padding: "16px 18px 6px", background: C.cream, position: "relative" }}>
+      {onBack && (
+        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: C.blitz, position: "absolute", left: 14, top: 16 }}>
+          <ArrowLeft size={22} />
+        </button>
+      )}
+      <h1 style={{ margin: "0 auto", fontFamily: "Montserrat", fontWeight: 800, fontSize: 15, letterSpacing: 1, color: C.ink, textTransform: "uppercase", paddingLeft: onBack ? 26 : 0 }}>
+        {title}
+      </h1>
+    </div>
+  );
+}
+
+function Pill({ children, tone = "light", onClick }) {
+  const styles = {
+    light: { background: "rgba(255,255,255,0.9)", color: C.blitz },
+    dark: { background: "rgba(255,255,255,0.16)", color: "#fff", border: "1px solid rgba(255,255,255,0.4)" },
+    ghost: { background: C.bleacherLight, color: C.roster },
+  };
+  return (
+    <span
+      onClick={onClick}
+      style={{
+        ...styles[tone],
+        fontFamily: "Montserrat", fontWeight: 700, fontSize: 11.5,
+        padding: "6px 12px", borderRadius: 99, display: "inline-block",
+        cursor: onClick ? "pointer" : "default", letterSpacing: 0.2,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* ---------------------------------------------------------
+   SCREENS
+--------------------------------------------------------- */
+function WelcomeScreen({ go }) {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: `linear-gradient(160deg, ${C.blitz}, ${C.blitzDeep})`, color: "#fff", justifyContent: "space-between", padding: "48px 30px 40px", textAlign: "center" }}>
+      <div />
+      <div>
+        <Logo size={140} color="#fff" />
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 34, letterSpacing: 1, marginTop: 6 }}>HER GAME PLAN</div>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 600, fontSize: 13, opacity: 0.85, marginTop: 10, lineHeight: 1.5 }}>
+          Women in Sports Leading The Way:<br />Your Playbook for Success
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <button onClick={() => go("auth", { mode: "signup" })} style={btnPrimary}>Sign Up</button>
+        <button onClick={() => go("auth", { mode: "signin" })} style={btnGhost}>Sign In</button>
+      </div>
+    </div>
+  );
+}
+
+const btnPrimary = {
+  background: "#fff", color: C.blitz, border: "none", borderRadius: 12,
+  padding: "15px 0", fontFamily: "Montserrat", fontWeight: 800, fontSize: 14,
+  letterSpacing: 1, cursor: "pointer", textTransform: "uppercase",
+};
+const btnGhost = {
+  background: "transparent", color: "#fff", border: "1.5px solid rgba(255,255,255,0.6)", borderRadius: 12,
+  padding: "15px 0", fontFamily: "Montserrat", fontWeight: 800, fontSize: 14,
+  letterSpacing: 1, cursor: "pointer", textTransform: "uppercase",
+};
+
+function Field({ label, value, onChange, type = "text" }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ fontFamily: "Montserrat", fontWeight: 700, fontSize: 10.5, color: C.bleacher, letterSpacing: 0.6, textTransform: "uppercase" }}>{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: "100%", boxSizing: "border-box", marginTop: 5, padding: "12px 14px",
+          borderRadius: 10, border: `1.5px solid ${C.bleacherLight}`, background: "#fff",
+          fontFamily: "Montserrat", fontSize: 14, color: C.ink, outline: "none",
+        }}
+        onFocus={(e) => (e.target.style.borderColor = C.blitz)}
+        onBlur={(e) => (e.target.style.borderColor = C.bleacherLight)}
+      />
+    </div>
+  );
+}
+
+function AuthScreen({ mode, setMode, go, setUser }) {
+  const [firstName, setFirstName] = useState("Emma");
+  const [lastName, setLastName] = useState("Wilson");
+  const [email, setEmail] = useState("emma@emmagraphics.com");
+  const [password, setPassword] = useState("");
+
+  const submit = () => {
+    setUser({ firstName, lastName, email });
+    go("home");
+  };
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: C.cream }}>
+      <div style={{ background: C.blitz, padding: "34px 24px 0" }}>
+        <Logo size={52} color="#fff" />
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 19, color: "#fff", marginTop: 6, letterSpacing: 0.5 }}>HER GAME PLAN</div>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 600, fontSize: 10, color: "rgba(255,255,255,0.75)", marginBottom: 18 }}>The Women Playmakers' Network</div>
+        <Wave flip />
+      </div>
+
+      <div style={{ flex: 1, padding: "0 26px", overflowY: "auto" }}>
+        <div style={{ display: "flex", gap: 22, margin: "20px 0 22px" }}>
+          {["signin", "signup"].map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              style={{
+                background: "none", border: "none", cursor: "pointer", padding: 0,
+                fontFamily: "Montserrat", fontWeight: 800, fontSize: 13, letterSpacing: 0.8,
+                color: mode === m ? C.blitz : C.bleacher,
+                borderBottom: mode === m ? `2.5px solid ${C.blitz}` : "2.5px solid transparent",
+                paddingBottom: 6, textTransform: "uppercase",
+              }}
+            >
+              {m === "signin" ? "Sign In" : "Sign Up"}
+            </button>
+          ))}
+        </div>
+
+        {mode === "signup" && (
+          <>
+            <Field label="First Name" value={firstName} onChange={setFirstName} />
+            <Field label="Last Name" value={lastName} onChange={setLastName} />
+          </>
+        )}
+        <Field label="Email" value={email} onChange={setEmail} />
+        <Field label="Password" value={password} onChange={setPassword} type="password" />
+
+        <button onClick={submit} style={{ ...btnPrimary, background: C.blitz, color: "#fff", width: "100%", marginTop: 10 }}>
+          {mode === "signin" ? "Sign In" : "Sign Up"}
+        </button>
+
+        <div style={{ textAlign: "center", marginTop: 16, fontFamily: "Montserrat", fontSize: 12.5, color: C.bleacher }}>
+          {mode === "signin" ? (
+            <>Don't have an account? <span onClick={() => setMode("signup")} style={{ color: C.blitz, fontWeight: 700, cursor: "pointer" }}>Sign Up</span></>
+          ) : (
+            <>Already have an account? <span onClick={() => setMode("signin")} style={{ color: C.blitz, fontWeight: 700, cursor: "pointer" }}>Sign In</span></>
+          )}
+        </div>
+        {mode === "signin" && (
+          <div style={{ textAlign: "center", marginTop: 10, fontFamily: "Montserrat", fontSize: 12, color: C.blitz, fontWeight: 700, cursor: "pointer" }}>
+            Forgot Password?
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HomeScreen({ user, go, goals, savedCount }) {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", background: C.blitz }}>
+      <div style={{ background: C.cream, padding: "20px 22px 4px" }}>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 21, color: C.ink }}>
+          WELCOME, {user.firstName.toUpperCase()}
+        </div>
+      </div>
+      <Wave />
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px", marginTop: -2 }}>
+        {/* Goals card */}
+        <div onClick={() => go("goals")} style={{ background: "#fff", borderRadius: 16, padding: "18px 16px", boxShadow: "0 8px 22px rgba(0,0,0,0.14)", cursor: "pointer" }}>
+          <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 14, color: C.ink, textAlign: "center", marginBottom: 12 }}>MY GOALS:</div>
+          <div style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
+            {["short", "long"].map((k) => {
+              const g = goals[k];
+              const done = g.steps.filter((s) => s.done).length;
+              const total = g.steps.length;
+              return (
+                <div key={k}>
+                  <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 11, color: C.blitz, letterSpacing: 0.5 }}>{g.label}:</div>
+                  <div style={{ fontFamily: "Montserrat", fontWeight: 600, fontSize: 11, color: C.roster, margin: "2px 0 8px", maxWidth: 110 }}>{g.title}</div>
+                  <div style={{ background: C.blitz, borderRadius: "50%", display: "inline-block", padding: 6 }}>
+                    <Ring current={done} total={total} size={70} label={k === "short" ? `${done}/${total}` : `${total - done}`} />
+                  </div>
+                  <div style={{ fontFamily: "Montserrat", fontSize: 10, color: C.bleacher, marginTop: 6, fontStyle: "italic" }}>view discussion</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Video of the week */}
+        <div onClick={() => go("tips")} style={{ marginTop: 16, borderRadius: 16, overflow: "hidden", position: "relative", height: 140, cursor: "pointer", background: `linear-gradient(120deg, ${C.roster}, ${C.blitzDark})` }}>
+          <div style={{ position: "absolute", right: 16, top: 14, textAlign: "right", fontFamily: "Montserrat", fontWeight: 900, fontSize: 19, color: "#fff", lineHeight: 1.05 }}>
+            VIDEO<br />OF<br />THE<br />WEEK
+          </div>
+          <div style={{ position: "absolute", left: 16, bottom: 12, color: "#fff" }}>
+            <div style={{ fontFamily: "Montserrat", fontSize: 10, opacity: 0.75, fontWeight: 600 }}>{videoOfWeek.series}</div>
+            <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 16 }}>{videoOfWeek.name}</div>
+          </div>
+          <div style={{ position: "absolute", left: 14, top: 14, width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Play size={16} color="#fff" fill="#fff" />
+          </div>
+        </div>
+
+        {/* Suggested jobs */}
+        <SectionLabel onClick={() => go("jobs")}>SUGGESTED FOR YOU…</SectionLabel>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 12, color: "#fff", textDecoration: "underline", margin: "10px 0 8px" }}>JOBS:</div>
+        {jobs.slice(0, 1).map((j) => <JobCard key={j.id} job={j} onClick={() => go("jobs")} />)}
+        <div onClick={() => go("jobs")} style={{ textAlign: "right", fontFamily: "Montserrat", fontSize: 11.5, color: "rgba(255,255,255,0.85)", fontStyle: "italic", marginTop: 8, cursor: "pointer" }}>view more…</div>
+
+        {/* Tips */}
+        <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 12, color: "#fff", textDecoration: "underline", margin: "18px 0 10px" }}>TIPS AND TRICKS:</div>
+        {articles.slice(0, 2).map((a) => <ArticlePreview key={a.id} article={a} onClick={() => go("articleDetail", { article: a })} />)}
+        <div onClick={() => go("tips")} style={{ textAlign: "right", fontFamily: "Montserrat", fontSize: 11.5, color: "rgba(255,255,255,0.85)", fontStyle: "italic", marginTop: 8, cursor: "pointer" }}>view more…</div>
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ children, onClick }) {
+  return (
+    <div onClick={onClick} style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 17, color: "#fff", textAlign: "center", marginTop: 22, cursor: onClick ? "pointer" : "default" }}>
+      {children}
+    </div>
+  );
+}
+
+function JobCard({ job, onClick, onApply, onSave, saved }) {
+  return (
+    <div onClick={onClick} style={{ background: "#fff", borderRadius: 14, overflow: "hidden", marginBottom: 12, boxShadow: "0 6px 16px rgba(0,0,0,0.12)", cursor: onClick ? "pointer" : "default" }}>
+      <div style={{ display: "flex" }}>
+        <div style={{ width: 92, background: job.hgp ? C.blitz : C.roster, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", padding: 8, textAlign: "center" }}>
+          {job.hgp ? <Logo size={40} color="#fff" /> : <Briefcase size={26} color="#fff" style={{ opacity: 0.85 }} />}
+          <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 9.5, color: "#fff", marginTop: 6, lineHeight: 1.2 }}>{job.title}</div>
+        </div>
+        <div style={{ flex: 1, padding: "10px 12px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
+            <Pill tone="ghost">{job.company}</Pill>
+            <Pill tone="ghost">{job.location}</Pill>
+            <Pill tone="ghost">{job.posted}</Pill>
+            <Pill tone="ghost">{job.pay}</Pill>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 6 }}>
+              {onApply && (
+                <button onClick={(e) => { e.stopPropagation(); onApply(); }} style={{ background: C.blitz, color: "#fff", border: "none", borderRadius: 8, padding: "5px 12px", fontFamily: "Montserrat", fontWeight: 800, fontSize: 10.5, cursor: "pointer" }}>APPLY</button>
+              )}
+              {onSave && (
+                <button onClick={(e) => { e.stopPropagation(); onSave(); }} style={{ background: saved ? C.roster : "#fff", color: saved ? "#fff" : C.roster, border: `1.5px solid ${C.roster}`, borderRadius: 8, padding: "5px 12px", fontFamily: "Montserrat", fontWeight: 800, fontSize: 10.5, cursor: "pointer" }}>{saved ? "SAVED" : "SAVE"}</button>
+              )}
+            </div>
+            <div style={{ textAlign: "right", fontFamily: "Montserrat", fontSize: 9.5, color: C.bleacher }}>
+              {job.interests} interests<br /><span style={{ color: C.blitz, fontWeight: 700 }}>{job.postedBy}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArticlePreview({ article, onClick }) {
+  return (
+    <div onClick={onClick} style={{ background: "#fff", borderRadius: 14, padding: "12px 14px", marginBottom: 10, cursor: "pointer" }}>
+      <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 12.5, color: C.blitz, textDecoration: "underline", lineHeight: 1.35 }}>{article.title}</div>
+      <div style={{ fontFamily: "Montserrat", fontSize: 11, color: C.roster, marginTop: 6, lineHeight: 1.4 }}>{article.excerpt}</div>
+    </div>
+  );
+}
+
+function GoalsScreen({ goals, setGoals, go }) {
+  const [tab, setTab] = useState("short");
+  const g = goals[tab];
+  const done = g.steps.filter((s) => s.done).length;
+  const total = g.steps.length;
+
+  const adjust = (delta) => {
+    setGoals((prev) => {
+      const steps = [...prev[tab].steps];
+      if (delta > 0) {
+        const idx = steps.findIndex((s) => !s.done);
+        if (idx !== -1) steps[idx] = { ...steps[idx], done: true };
+      } else {
+        for (let i = steps.length - 1; i >= 0; i--) {
+          if (steps[i].done) { steps[i] = { ...steps[i], done: false }; break; }
+        }
+      }
+      return { ...prev, [tab]: { ...prev[tab], steps } };
+    });
+  };
+
+  const toggleStep = (id) => {
+    setGoals((prev) => ({
+      ...prev,
+      [tab]: { ...prev[tab], steps: prev[tab].steps.map((s) => (s.id === id ? { ...s, done: !s.done } : s)) },
+    }));
+  };
+
+  const togglePublic = () => {
+    setGoals((prev) => ({ ...prev, [tab]: { ...prev[tab], isPublic: !prev[tab].isPublic } }));
+  };
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.cream }}>
+        <TopBar title="Reach Your Goals!" />
+        <Wave />
+      </div>
+      <div style={{ flex: 1, background: C.blitz, overflowY: "auto", padding: "18px 22px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: 26, marginBottom: 18 }}>
+          {["short", "long"].map((k) => (
+            <button key={k} onClick={() => setTab(k)} style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontFamily: "Montserrat", fontWeight: 800, fontSize: 12.5, letterSpacing: 0.6,
+              color: "#fff", opacity: tab === k ? 1 : 0.55,
+              borderBottom: tab === k ? "2px solid #fff" : "2px solid transparent", paddingBottom: 4,
+            }}>
+              {goals[k].label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ textAlign: "center", fontFamily: "Montserrat", fontWeight: 800, fontSize: 19, color: "#fff", marginBottom: 20 }}>{g.title}</div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginBottom: 24 }}>
+          <button onClick={() => adjust(-1)} style={circleBtn}><Minus size={18} color="#fff" /></button>
+          <Ring current={done} total={total} size={116} label={tab === "short" ? `${done}/${total}` : `${total - done}`} />
+          <button onClick={() => adjust(1)} style={circleBtn}><Plus size={18} color="#fff" /></button>
+        </div>
+        {tab === "long" && (
+          <div style={{ textAlign: "center", fontFamily: "Montserrat", fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: -14, marginBottom: 18 }}>tasks left</div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 20 }}>
+          {g.steps.map((s) => (
+            <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <span onClick={() => toggleStep(s.id)} style={{
+                width: 18, height: 18, borderRadius: 4, border: "2px solid #fff",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                background: s.done ? "#fff" : "transparent",
+              }}>
+                {s.done && <Check size={13} color={C.blitz} strokeWidth={3.5} />}
+              </span>
+              <span style={{ fontFamily: "Montserrat", fontSize: 13, color: "#fff", textDecoration: "underline", textDecorationColor: "rgba(255,255,255,0.5)" }}>{s.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <div style={{ textAlign: "center", fontFamily: "Montserrat", fontSize: 11.5, color: "rgba(255,255,255,0.85)", marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 6 }}>
+            {g.isPublic ? <Globe2 size={13} /> : <Lock size={13} />}
+            This goal is currently {g.isPublic ? "PUBLIC" : "PRIVATE"}.
+          </div>
+          <div onClick={togglePublic} style={{ fontWeight: 800, textDecoration: "underline", marginTop: 4, cursor: "pointer" }}>
+            Switch to {g.isPublic ? "Private" : "Public to open discussion"}
+          </div>
+          {g.isPublic && (
+            <div onClick={() => go("messages")} style={{ fontWeight: 800, textDecoration: "underline", marginTop: 10, cursor: "pointer" }}>
+              View Discussion
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+const circleBtn = { width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.5)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" };
+
+function JobsScreen({ go, interests, setInterests, savedJobs, toggleSave }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const available = suggestedInterests.filter((s) => !interests.includes(s));
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.cream }}>
+        <TopBar title="Your Job Board" />
+        <Wave />
+      </div>
+      <div style={{ flex: 1, background: C.blitz, overflowY: "auto", padding: "16px 20px 24px" }}>
+        <div style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 14, padding: "14px 14px 16px", marginBottom: 16 }}>
+          <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 13, color: "#fff", marginBottom: 8 }}>YOUR INTERESTS:</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: showAdd ? 12 : 0 }}>
+            {interests.map((i) => <Pill key={i} tone="light">{i}</Pill>)}
+            <Pill tone="dark" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Done" : "+ Add More"}</Pill>
+          </div>
+          {showAdd && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {available.map((s) => (
+                <Pill key={s} tone="dark" onClick={() => setInterests((prev) => [...prev, s])}>{s}</Pill>
+              ))}
+              {available.length === 0 && <span style={{ fontFamily: "Montserrat", fontSize: 11, color: "rgba(255,255,255,0.7)" }}>You've added them all!</span>}
+            </div>
+          )}
+        </div>
+
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 17, color: "#fff", textAlign: "center", marginBottom: 14 }}>SUGGESTED FOR YOU…</div>
+
+        {jobs.map((j) => (
+          <JobCard
+            key={j.id}
+            job={j}
+            onApply={() => go("jobProfile", { job: j })}
+            onSave={() => toggleSave(j.id)}
+            saved={savedJobs.has(j.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function JobProfileScreen({ go, job, user }) {
+  const [form, setForm] = useState({
+    firstName: user.firstName, lastName: user.lastName, email: user.email,
+    phone: "123-456-7890", city: "Mahwah", state: "New Jersey",
+    headline: "Class of 2025 Visual Design Student",
+    portfolio: "emmawilson.portfolio.com", resume: "emmawilsonresume.pdf",
+  });
+  const upd = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
+
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.cream }}>
+        <TopBar title="Your Job Board" onBack={() => go("jobs")} />
+        <Wave />
+      </div>
+      <div style={{ flex: 1, background: C.blitz, overflowY: "auto", padding: "16px 20px 24px" }}>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 16, color: "#fff", textAlign: "center", marginBottom: 4 }}>YOUR PRE-SAVED INFO:</div>
+        {job && <div style={{ fontFamily: "Montserrat", fontSize: 11.5, color: "rgba(255,255,255,0.8)", textAlign: "center", marginBottom: 14 }}>Applying to {job.title} · {job.company}</div>}
+
+        <div style={{ background: "#fff", borderRadius: 16, padding: 18 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.bleacherLight, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Montserrat", fontWeight: 800, color: C.blitz, fontSize: 20 }}>
+              {form.firstName[0]}{form.lastName[0]}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}><Field label="First Name" value={form.firstName} onChange={upd("firstName")} /></div>
+            <div style={{ flex: 1 }}><Field label="Last Name" value={form.lastName} onChange={upd("lastName")} /></div>
+          </div>
+          <Field label="Email" value={form.email} onChange={upd("email")} />
+          <Field label="Phone Number" value={form.phone} onChange={upd("phone")} />
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}><Field label="City" value={form.city} onChange={upd("city")} /></div>
+            <div style={{ flex: 1 }}><Field label="State" value={form.state} onChange={upd("state")} /></div>
+          </div>
+          <Field label="Headline" value={form.headline} onChange={upd("headline")} />
+          <Field label="Portfolio" value={form.portfolio} onChange={upd("portfolio")} />
+          <Field label="Resume" value={form.resume} onChange={upd("resume")} />
+
+          <button onClick={() => go("jobSubmitted")} style={{ ...btnPrimary, background: C.blitz, color: "#fff", width: "100%", marginTop: 6 }}>
+            Submit and Return Home
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JobSubmittedScreen({ go }) {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.cream }}>
+        <TopBar title="Your Job Board" />
+        <Wave />
+      </div>
+      <div style={{ flex: 1, background: C.blitz, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+        <div style={{ width: 84, height: 84, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Check size={44} color="#fff" strokeWidth={3} />
+        </div>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 24, color: "#fff", letterSpacing: 1 }}>SUBMITTED!</div>
+        <button onClick={() => go("home")} style={{ ...btnGhost, padding: "12px 28px" }}>Return Home</button>
+      </div>
+    </div>
+  );
+}
+
+function TipsScreen({ go }) {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.cream }}>
+        <TopBar title="Tips and Tricks" />
+        <Wave />
+      </div>
+      <div style={{ flex: 1, background: C.blitz, overflowY: "auto", padding: "16px 20px 24px" }}>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 16, color: "#fff", marginBottom: 12 }}>VIDEO OF THE WEEK:</div>
+        <div onClick={() => go("articleDetail", { article: articles[0] })} style={{ background: "#fff", borderRadius: 14, padding: 14, marginBottom: 20, cursor: "pointer", display: "flex", gap: 12 }}>
+          <div style={{ width: 78, height: 90, borderRadius: 10, background: `linear-gradient(140deg, ${C.roster}, ${C.blitzDark})`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Play size={22} color="#fff" fill="#fff" />
+          </div>
+          <div>
+            <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 12.5, color: C.ink }}>{videoOfWeek.series}: {videoOfWeek.name}</div>
+            <div style={{ fontFamily: "Montserrat", fontSize: 11, color: C.blitz, fontWeight: 700, marginTop: 4 }}>{videoOfWeek.role}</div>
+            <div style={{ fontFamily: "Montserrat", fontSize: 10.5, color: C.bleacher, marginTop: 2 }}>{videoOfWeek.location}</div>
+          </div>
+        </div>
+
+        <div style={{ fontFamily: "Montserrat", fontWeight: 900, fontSize: 16, color: "#fff", marginBottom: 12 }}>HIGHLIGHTED ARTICLES:</div>
+        {articles.map((a) => (
+          <div key={a.id} onClick={() => go("articleDetail", { article: a })} style={{ background: "#fff", borderRadius: 14, padding: 14, marginBottom: 12, cursor: "pointer" }}>
+            <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 13, color: C.blitz, textDecoration: "underline", lineHeight: 1.35, marginBottom: 6 }}>{a.title}</div>
+            <div style={{ fontFamily: "Montserrat", fontSize: 11, color: C.roster, lineHeight: 1.4 }}>{a.excerpt}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ArticleDetailScreen({ article, go }) {
+  if (!article) return null;
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.blitz, padding: "16px 20px 20px" }}>
+        <button onClick={() => go("tips")} style={{ background: "none", border: "none", cursor: "pointer", color: "#fff", marginBottom: 10 }}>
+          <ArrowLeft size={20} />
+        </button>
+        <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 17, color: "#fff", textDecoration: "underline", lineHeight: 1.3 }}>{article.title}</div>
+        <div style={{ fontFamily: "Montserrat", fontSize: 11.5, color: "rgba(255,255,255,0.85)", marginTop: 8 }}>{article.author} | {article.role}</div>
+        <Wave flip style={{ marginTop: 14 }} />
+      </div>
+      <div style={{ flex: 1, background: C.cream, overflowY: "auto", padding: "8px 22px 30px" }}>
+        {article.body.map((p, i) => (
+          <p key={i} style={{ fontFamily: "Montserrat", fontSize: 13, color: C.ink, lineHeight: 1.7, marginBottom: 14, textAlign: i === 0 ? "left" : "left" }}>{p}</p>
+        ))}
+        <div onClick={() => go("messages")} style={{ fontFamily: "Montserrat", fontSize: 12, color: C.blitz, fontWeight: 700, fontStyle: "italic", textAlign: "right", marginTop: 6, cursor: "pointer" }}>
+          open discussion…
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MessagesScreen({ go }) {
+  const threads = [
+    { name: "Carla Jennings", preview: "Would love to see your portfolio — feel free to apply!", tag: "Graphic Designer @ Her Game Plan" },
+    { name: "Goal Discussion", preview: "\"Complete Capstone Project\" — 3 people cheering you on", tag: "Public goal" },
+    { name: "Sarah Johnson", preview: "So glad the boundaries tip resonated with you 💜", tag: "Balancing Work and Wellness" },
+    { name: "Jessica Thomas", preview: "Happy to chat more about the Graphic Design Assistant role.", tag: "Victory Creative" },
+  ];
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.cream }}>
+        <TopBar title="Messages" />
+        <Wave />
+      </div>
+      <div style={{ flex: 1, background: C.blitz, overflowY: "auto", padding: "16px 20px 24px" }}>
+        {threads.map((t, i) => (
+          <div key={i} style={{ background: "#fff", borderRadius: 14, padding: 14, marginBottom: 10, display: "flex", gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.bleacherLight, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Montserrat", fontWeight: 800, color: C.blitz, fontSize: 13, flexShrink: 0 }}>
+              {t.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ fontFamily: "Montserrat", fontWeight: 800, fontSize: 12.5, color: C.ink }}>{t.name}</div>
+              </div>
+              <div style={{ fontFamily: "Montserrat", fontSize: 11, color: C.roster, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.preview}</div>
+              <div style={{ fontFamily: "Montserrat", fontSize: 9.5, color: C.bleacher, marginTop: 3, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3 }}>{t.tag}</div>
+            </div>
+            <ChevronRight size={16} color={C.bleacher} style={{ flexShrink: 0, marginTop: 12 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   APP SHELL
+--------------------------------------------------------- */
+function HerGamePlanApp() {
+  const [screen, setScreen] = useState("welcome");
+  const [authMode, setAuthMode] = useState("signin");
+  const [user, setUser] = useState({ firstName: "Emma", lastName: "Wilson", email: "emma@emmagraphics.com" });
+  const [goals, setGoals] = useState(initialGoals);
+  const [interests, setInterests] = useState(currentInterests);
+  const [savedJobs, setSavedJobs] = useState(new Set());
+  const [selectedArticle, setSelectedArticle] = useState(articles[0]);
+  const [selectedJob, setSelectedJob] = useState(null);
+
+  const go = (next, payload = {}) => {
+    if (payload.mode) setAuthMode(payload.mode);
+    if (payload.article) setSelectedArticle(payload.article);
+    if (payload.job !== undefined) setSelectedJob(payload.job);
+    setScreen(next);
+  };
+
+  const toggleSave = (id) => {
+    setSavedJobs((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const showNav = !["welcome", "auth"].includes(screen);
+
+  let body;
+  switch (screen) {
+    case "welcome": body = <WelcomeScreen go={go} />; break;
+    case "auth": body = <AuthScreen mode={authMode} setMode={setAuthMode} go={go} setUser={setUser} />; break;
+    case "home": body = <HomeScreen user={user} go={go} goals={goals} />; break;
+    case "goals": body = <GoalsScreen goals={goals} setGoals={setGoals} go={go} />; break;
+    case "jobs": body = <JobsScreen go={go} interests={interests} setInterests={setInterests} savedJobs={savedJobs} toggleSave={toggleSave} />; break;
+    case "jobProfile": body = <JobProfileScreen go={go} job={selectedJob} user={user} />; break;
+    case "jobSubmitted": body = <JobSubmittedScreen go={go} />; break;
+    case "tips": body = <TipsScreen go={go} />; break;
+    case "articleDetail": body = <ArticleDetailScreen article={selectedArticle} go={go} />; break;
+    case "messages": body = <MessagesScreen go={go} />; break;
+    default: body = <WelcomeScreen go={go} />;
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#EDEAF2", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 0", fontFamily: "Montserrat" }}>
+      <style>{FONT}</style>
+      <div style={{
+        width: 390, height: 780, maxWidth: "100vw", maxHeight: "100vh",
+        background: C.cream, borderRadius: 34, overflow: "hidden",
+        boxShadow: "0 30px 60px rgba(35,20,50,0.35)", display: "flex", flexDirection: "column",
+        border: "8px solid #17101f",
+      }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          {body}
+        </div>
+        {showNav && <NavBar screen={screen} go={go} />}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<HerGamePlanApp />);
+</script>
+</body>
+</html>
