@@ -38,26 +38,7 @@ export function streakOf(activity = []) {
   return n;
 }
 
-/** how well a job lines up with the user's interests, 30–99 */
-export function matchPct(job, interests = []) {
-  if (!interests.length || !job.tags.length) return null;
-  const lower = interests.map((i) => i.toLowerCase());
-  const hits = job.tags.filter((t) => lower.includes(t.toLowerCase())).length;
-  return Math.min(99, Math.round(30 + 69 * (hits / job.tags.length)));
-}
-
-export async function sha256(text) {
-  try {
-    if (globalThis.crypto?.subtle) {
-      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-      return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    }
-  } catch (e) { /* fall through */ }
-  return `plain:${btoa(unescape(encodeURIComponent(text)))}`; // demo-only fallback
-}
-
-/** center-crop + downscale an uploaded image so it fits comfortably in storage */
-export function resizeImage(file, size = 320) {
+export function resizeImage(file, size = 240) {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
     fr.onerror = () => reject(new Error("Could not read file"));
@@ -69,7 +50,7 @@ export function resizeImage(file, size = 320) {
         c.width = c.height = size;
         const s = Math.min(img.width, img.height);
         c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
-        resolve(c.toDataURL("image/jpeg", 0.85));
+        resolve(c.toDataURL("image/jpeg", 0.8));
       };
       img.src = fr.result;
     };

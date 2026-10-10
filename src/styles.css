@@ -519,3 +519,51 @@ span.avatar { display: inline-grid; place-items: center; flex: none; flex-direct
 @keyframes blink { 0%, 80%, 100% { opacity: .35; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 @keyframes burst { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 420px)) rotate(var(--rot)); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
+
+/* ======================= real-app additions ======================= */
+/* jobs: coming soon */
+.soon { text-align: center; padding: 22px 18px; }
+.soon-ic { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--mist); color: var(--blitz); margin-bottom: 8px; }
+.soon-tag { margin: 4px 0 2px; font-size: 12px; font-weight: 800; letter-spacing: 1.6px; color: var(--tennis-deep); }
+.soon h2 { margin: 0 0 8px; font-size: 24px; line-height: 1.15; font-weight: 800; }
+.soon-row { display: flex; gap: 12px; padding: 10px 0; align-items: flex-start; }
+.soon-row > span { flex: none; width: 38px; height: 38px; border-radius: 12px; background: var(--mist); color: var(--blitz); display: grid; place-items: center; }
+.soon-row b { display: block; font-size: 15px; } .soon-row p { margin: 2px 0 0; font-size: 13.5px; color: #5b5565; line-height: 1.4; }
+.soon-on { display: inline-flex; gap: 8px; align-items: center; background: var(--tennis); color: #173a24; font-weight: 800; border-radius: 99px; padding: 7px 14px; margin-bottom: 8px; }
+.soon-hire { display: flex; gap: 12px; align-items: flex-start; color: var(--blitz); }
+.soon-hire b { display: block; color: #000; } .soon-hire p { margin: 2px 0 6px; font-size: 13.5px; color: #5b5565; }
+
+/* sample labels */
+.pill.tag.sample { background: #FFF4D6; color: #7a5a00; margin-left: 6px; }
+.sample-flag { color: #ffe9a8; }
+.authorbox.static { cursor: default; }
+
+/* mentors */
+.become h3 { margin: 0 0 4px; } .become p { margin: 0 0 12px; font-size: 14px; color: #4b4455; line-height: 1.45; }
+.req { padding: 12px 0; border-bottom: 1px solid #f0ebf4; } .req:last-child { border-bottom: 0; }
+.req-msg { margin: 8px 0 10px; font-size: 14px; color: #2a2432; line-height: 1.45; background: var(--mist); border-radius: 12px; padding: 10px 12px; }
+.req .row-btns { margin-top: 0; }
+.btn.sm.solid, .btn.sm { padding-left: 14px; padding-right: 14px; }
+
+/* settings rows */
+.rowbtn.static { cursor: default; }
+.rowbtn.danger, .rowbtn.danger span b { color: #b3261e; }
+.rowbtn:disabled { opacity: .6; cursor: wait; }
+
+/* admin */
+.seg.scroll { overflow-x: auto; scrollbar-width: none; } .seg.scroll::-webkit-scrollbar { display: none; }
+.seg.scroll button { flex: none; padding-left: 12px; padding-right: 12px; font-size: 12.5px; }
+.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+.card.stat { padding: 14px; margin: 0; display: flex; flex-direction: column; } .stat b { font-size: 30px; line-height: 1; color: var(--blitz); font-weight: 800; } .stat span { margin-top: 6px; font-size: 12.5px; color: #5b5565; font-weight: 600; }
+.adm header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; } .adm header span { font-size: 12px; color: #8a8393; }
+.adm-line, .adm-text { margin: 0 0 8px; font-size: 14.5px; line-height: 1.45; color: #2a2432; }
+.adm blockquote { margin: 6px 0 10px; padding: 10px 12px; border-left: 4px solid var(--blitz); background: var(--mist); border-radius: 0 10px 10px 0; font-size: 14px; line-height: 1.45; white-space: pre-line; }
+.adm.slim { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; } .adm.slim small { display: block; color: #8a8393; font-size: 12.5px; }
+.adm.dim { opacity: .55; }
+.row-btns.wrap { flex-wrap: wrap; margin-top: 10px; } .row-btns.wrap .btn { flex: 1 1 auto; }
+.code-row { align-items: center; } .code-row span { display: flex; flex-direction: column; text-align: left; } .code-row span b { text-align: left; } .code-row small { color: #8a8393; font-size: 12.5px; }
+
+/* load problem + auth bits */
+.splash.problem { flex-direction: column; gap: 12px; text-align: center; padding: 32px; color: #fff; place-content: center; display: flex; align-items: center; }
+.splash.problem h2 { margin: 6px 0 0; font-size: 22px; } .splash.problem p { margin: 0 0 8px; opacity: .85; max-width: 280px; }
+.auth-p.small { font-size: 13.5px; }

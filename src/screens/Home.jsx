@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { Bell, Briefcase, Flame, MessageCircle, Play, Plus, Minus, Heart } from "lucide-react";
+import { Bell, Flame, MessageCircle, Play, Plus, Minus, Heart, Target } from "lucide-react";
 import { useApp } from "../store";
 import { VIDEO } from "../data/seed";
 import { Avatar, IconBtn, Ring, Screen } from "../ui";
-import { JobCard } from "./Jobs";
 import { ArticleCard, VideoModal } from "./Tips";
 import { ringText } from "./Goals";
-import { matchPct, plural, timeAgo } from "../util";
+import { timeAgo } from "../util";
 
 function GoalMini({ g, term }) {
   const { A, go } = useApp();
@@ -41,13 +40,10 @@ export default function Home() {
   const [video, setVideo] = useState(false);
 
   const pick = (t) => db.goals.filter((g) => g.term === t).sort((a, b) => Number(!!a.completedAt) - Number(!!b.completedAt) || b.ts - a.ts)[0];
-  const activeApps = db.applications.filter((a) => a.status === "applied" || a.status === "interviewing").length;
-  const jobs = db.jobs
-    .filter((j) => !db.applications.some((a) => a.jobId === j.id))
-    .sort((a, b) => (matchPct(b, me.interests) || 0) - (matchPct(a, me.interests) || 0) || b.ts - a.ts)
-    .slice(0, 2);
+  const activeGoals = db.goals.filter((g) => !g.completedAt).length;
   const post = db.posts.find((p) => !db.blocked.includes(p.authorId));
   const postAuthor = post ? person(post.authorId) : null;
+  const postAuthorFallback = person("me");
 
   return (
     <Screen
@@ -57,7 +53,7 @@ export default function Home() {
     >
       <div className="chips-row quick">
         <button type="button" className="qchip" onClick={() => tab("goals")}><Flame size={15} /> {streak > 0 ? `${streak}-day streak` : "Start a streak"}</button>
-        <button type="button" className="qchip" onClick={() => go("tracker")}><Briefcase size={15} /> {activeApps} in progress</button>
+        <button type="button" className="qchip" onClick={() => tab("goals")}><Target size={15} /> {activeGoals} active {activeGoals === 1 ? "goal" : "goals"}</button>
         <button type="button" className="qchip" onClick={() => tab("connect")}><MessageCircle size={15} /> {unreadMessages > 0 ? `${unreadMessages} unread` : "Inbox clear"}</button>
       </div>
 
@@ -74,14 +70,10 @@ export default function Home() {
         <span className="vc-fade" />
         <span className="vc-play"><Play size={20} fill="#fff" /></span>
         <span className="vc-title">VIDEO<br />OF<br />THE<br />WEEK</span>
-        <span className="vc-by"><small>{VIDEO.series}</small>{VIDEO.name}</span>
+        <span className="vc-by"><small>{VIDEO.series}</small>Concept sample</span>
       </button>
 
       <h2 className="h-xl">Suggested for you…</h2>
-      <h3 className="h-sub"><u>Jobs:</u></h3>
-      {jobs.map((j) => <JobCard key={j.id} job={j} />)}
-      <button type="button" className="more" onClick={() => tab("jobs")}>view more…</button>
-
       {post && (
         <>
           <h3 className="h-sub"><u>From the community:</u></h3>
@@ -90,6 +82,16 @@ export default function Home() {
             <span><b>{postAuthor.name}</b><small>{timeAgo(post.ts)}</small><em>{post.text}</em><i><Heart size={13} /> {post.likes.length} · <MessageCircle size={13} /> {post.comments.length}</i></span>
           </button>
           <button type="button" className="more" onClick={() => tab("connect")}>view more…</button>
+        </>
+      )}
+
+      {!post && (
+        <>
+          <h3 className="h-sub"><u>From the community:</u></h3>
+          <button type="button" className="card comm" onClick={() => tab("connect")}>
+            <Avatar person={postAuthorFallback} size={40} />
+            <span><b>Be the first to post</b><em>Share a win, ask a question, or say hi to the other playmakers.</em></span>
+          </button>
         </>
       )}
 

@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import { Camera, Check, Eye, EyeOff, ChevronRight } from "lucide-react";
 import { useApp } from "../store";
-import { DEMO_EMAIL, DEMO_PASSWORD, INTEREST_OPTIONS, ROLES } from "../data/seed";
+import { INTEREST_OPTIONS, ROLES } from "../data/seed";
+import { authApi, niceError } from "../api/supa";
 import { Field, Logo, Pill, Screen, Sheet, Wave, Avatar, SearchBar } from "../ui";
-import { isEmail, resizeImage, sha256 } from "../util";
+import { isEmail, resizeImage } from "../util";
+import { LegalBody } from "./Legal";
 
 export function Splash() {
   return (
@@ -13,7 +15,7 @@ export function Splash() {
   );
 }
 
-export function Welcome({ onSignIn, onSignUp, onDemo }) {
+export function Welcome({ onSignIn, onSignUp }) {
   return (
     <div className="welcome">
       <div className="welcome-top">
@@ -28,7 +30,7 @@ export function Welcome({ onSignIn, onSignUp, onDemo }) {
         <Logo kind="icon" width={104} />
         <p className="wtag">Women in Sports Leading The Way:<br />Your Playbook for Success</p>
         <button type="button" className="btn white wide" onClick={onSignUp}>Get started</button>
-        <button type="button" className="linkish" onClick={onDemo}>Explore the demo <ChevronRight size={15} /></button>
+        <button type="button" className="linkish" onClick={onSignIn}>I already have an account <ChevronRight size={15} /></button>
       </div>
     </div>
   );
@@ -37,22 +39,19 @@ export function Welcome({ onSignIn, onSignUp, onDemo }) {
 function LegalSheet({ open, onClose }) {
   return (
     <Sheet open={open} onClose={onClose} title="Terms & Privacy" tall>
-      <p className="sheet-text"><b>Placeholder text.</b> Replace with lawyer-reviewed Terms of Service and a Privacy Policy before launch. Apple requires a privacy policy for any app with accounts.</p>
-      <h4 className="sheet-h4">Community standards</h4>
-      <p className="sheet-text">Be supportive. No harassment, discrimination, or spam. Job posts must be real opportunities. You can report or block any member at any time.</p>
-      <h4 className="sheet-h4">Your data</h4>
-      <p className="sheet-text">In this demo, everything is stored only in your browser. In production, describe what you collect, why, who you share it with, and how members can export or delete their data.</p>
+      <LegalBody />
     </Sheet>
   );
 }
 
 export function AuthScreen({ mode, setMode, onForgot, onBack }) {
-  const { db, act, toast } = useApp();
-  const [f, setF] = useState({ firstName: "", lastName: "", email: "", password: "", agree: false });
+  const { toast } = useApp();
+  const [f, setF] = useState({ firstName: "", lastName: "", email: "", password: "", invite: "", agree: false });
   const [errors, setErrors] = useState({});
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [legal, setLegal] = useState(false);
+  const [confirmSent, setConfirmSent] = useState("");
   const up = (k) => (v) => { setF((s) => ({ ...s, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined, form: undefined })); };
   const signup = mode === "signup";
 
@@ -64,30 +63,42 @@ export function AuthScreen({ mode, setMode, onForgot, onBack }) {
     if (!isEmail(f.email)) er.email = "Enter a valid email address";
     if (!f.password) er.password = "Enter your password";
     else if (signup && f.password.length < 8) er.password = "Use at least 8 characters";
+    if (signup && !f.invite.trim()) er.invite = "Enter your invite code";
     if (signup && !f.agree) er.agree = "Please agree to continue";
     if (Object.keys(er).length) { setErrors(er); return; }
 
     setBusy(true);
     const email = f.email.trim().toLowerCase();
-    const acct = db.accounts.find((a) => a.email === email);
-    if (signup) {
-      if (acct) { setErrors({ email: "An account with this email already exists. Try signing in." }); setBusy(false); return; }
-      act("signUp", { firstName: f.firstName.trim(), lastName: f.lastName.trim(), email, hash: await sha256(f.password) });
-      toast(`Welcome, ${f.firstName.trim()}!`);
-    } else if (email === DEMO_EMAIL && f.password === DEMO_PASSWORD) {
-      act("loadDemo");
-      toast("Signed in to the demo account");
-    } else if (acct && acct.hash === (await sha256(f.password))) {
-      act("signIn", { email });
-    } else {
-      setErrors({ form: "Email or password is incorrect." });
-      setBusy(false);
-      return;
+    try {
+      if (signup) {
+        if (!(await authApi.checkInvite(f.invite))) { setErrors({ invite: "That invite code isn't valid." }); setBusy(false); return; }
+        const { needsConfirm } = await authApi.signUp({ firstName: f.firstName.trim(), lastName: f.lastName.trim(), email, password: f.password, inviteCode: f.invite });
+        if (needsConfirm) { setConfirmSent(email); setBusy(false); return; }
+        toast(`Welcome, ${f.firstName.trim()}!`);
+      } else {
+        await authApi.signIn({ email, password: f.password });
+      }
+    } catch (err) {
+      setErrors({ form: niceError(err) });
     }
     setBusy(false);
   };
 
   const anyError = Object.values(errors).some(Boolean);
+
+  if (confirmSent) {
+    return (
+      <section className="screen auth light-auth">
+        <header className="auth-top"><button type="button" className="auth-back" onClick={onBack} aria-label="Back">←</button><Logo kind="lockup" width={150} /></header>
+        <Wave fill="var(--blitz)" />
+        <div className="auth-body">
+          <h2 className="auth-h">Check your email</h2>
+          <p className="auth-p">We sent a confirmation link to <b>{confirmSent}</b>. Tap it, then come back and sign in.</p>
+          <button type="button" className="btn solid wide" onClick={() => { setConfirmSent(""); setMode("signin"); }}>Back to sign in</button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="screen auth light-auth">
@@ -97,11 +108,13 @@ export function AuthScreen({ mode, setMode, onForgot, onBack }) {
       </header>
       <Wave fill="var(--blitz)" />
       <form className="auth-body" onSubmit={submit} noValidate>
-        {anyError && <div className="banner" role="alert">{errors.form || "Please fill out all fields in order"}</div>}
+        {anyError && <div className="banner" role="alert">{errors.form || "Please check the highlighted fields"}</div>}
         <div className="tabs-lite on-white" role="tablist">
           <button type="button" role="tab" aria-selected={!signup} className={!signup ? "on" : ""} onClick={() => setMode("signin")}>Sign in</button>
           <button type="button" role="tab" aria-selected={signup} className={signup ? "on" : ""} onClick={() => setMode("signup")}>Sign up</button>
         </div>
+        {signup && <p className="auth-p small">Her Game Plan is invite-only while we test with our first playmakers. Enter the code you were given.</p>}
+        {signup && <Field label="Invite code" value={f.invite} onChange={(v) => up("invite")(v.toUpperCase())} error={errors.invite} autoComplete="off" placeholder="e.g. PLAYMAKER26" />}
         {signup && (
           <div className="two">
             <Field label="First name" value={f.firstName} onChange={up("firstName")} error={errors.firstName} autoComplete="given-name" />
@@ -127,63 +140,26 @@ export function AuthScreen({ mode, setMode, onForgot, onBack }) {
           {signup ? <>Already have an account? <button type="button" className="inline-link" onClick={() => setMode("signin")}>Sign in</button></>
             : <><button type="button" className="inline-link" onClick={onForgot}>Forgot password?</button></>}
         </p>
-        {!signup && (
-          <button type="button" className="demo-hint" onClick={() => { setF((s) => ({ ...s, email: DEMO_EMAIL, password: DEMO_PASSWORD })); setErrors({}); }}>
-            Try the demo account: <b>{DEMO_EMAIL}</b>
-          </button>
-        )}
       </form>
       <LegalSheet open={legal} onClose={() => setLegal(false)} />
     </section>
   );
 }
 
-/* ---------------- forgot password (email → code → new password) ---------------- */
-function CodeInput({ value, onChange, length = 5 }) {
-  const refs = useRef([]);
-  const at = (i) => (value[i] && value[i] !== " " ? value[i] : "");
-  const set = (i, ch) => {
-    const arr = value.padEnd(length, " ").split("");
-    arr[i] = ch || " ";
-    onChange(arr.join(""));
-    if (ch && i < length - 1) refs.current[i + 1]?.focus();
-  };
-  return (
-    <div className="code" onPaste={(e) => { const t = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length); if (t) { e.preventDefault(); onChange(t.padEnd(length, " ")); refs.current[Math.min(t.length, length - 1)]?.focus(); } }}>
-      {Array.from({ length }, (_, i) => (
-        <input key={i} ref={(el) => (refs.current[i] = el)} inputMode="numeric" maxLength={1} aria-label={`Digit ${i + 1}`} value={at(i)}
-          onChange={(e) => set(i, e.target.value.replace(/\D/g, "").slice(-1))}
-          onKeyDown={(e) => { if (e.key === "Backspace" && !at(i) && i > 0) refs.current[i - 1]?.focus(); }} />
-      ))}
-    </div>
-  );
-}
-
-export function Forgot({ onDone, onBack }) {
-  const { db, act, toast } = useApp();
-  const [step, setStep] = useState("email");
+/* ---------------- forgot password (we email a reset link) ---------------- */
+export function Forgot({ onBack }) {
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [sent, setSent] = useState("");
-  const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const send = () => {
+  const send = async (e) => {
+    e?.preventDefault();
     if (!isEmail(email)) { setErr("Enter a valid email address"); return; }
-    setSent(String(10000 + Math.floor(Math.random() * 90000)));
-    setErr(""); setCode(""); setStep("code");
-  };
-  const verify = () => {
-    if (code.replace(/ /g, "") !== sent) { setErr("That code doesn't match. Check it and try again."); return; }
-    setErr(""); setStep("new");
-  };
-  const save = async () => {
-    if (pw.length < 8) { setErr("Use at least 8 characters"); return; }
-    const hash = await sha256(pw);
-    const e = email.trim().toLowerCase();
-    if (db.accounts.some((a) => a.email === e)) act("resetPassword", { email: e, hash });
-    toast("Password updated. Sign in with your new password.");
-    onDone();
+    setBusy(true);
+    try { await authApi.sendReset(email.trim().toLowerCase()); setSent(true); }
+    catch (er) { setErr(niceError(er)); }
+    setBusy(false);
   };
 
   return (
@@ -193,28 +169,45 @@ export function Forgot({ onDone, onBack }) {
         <Logo kind="lockup" width={150} />
       </header>
       <Wave fill="var(--blitz)" />
-      <div className="auth-body">
+      <form className="auth-body" onSubmit={send} noValidate>
         <h2 className="auth-h">Forgot password</h2>
-        {step === "email" && (<>
-          <p className="auth-p">Enter your email and we'll send a temporary sign-in code.</p>
+        {!sent ? (<>
+          <p className="auth-p">Enter your email and we'll send you a link to choose a new password.</p>
           <Field label="Email" type="email" value={email} onChange={(v) => { setEmail(v); setErr(""); }} error={err} autoComplete="email" />
-          <button type="button" className="btn solid wide" onClick={send}>Send code</button>
-        </>)}
-        {step === "code" && (<>
-          <p className="auth-p">Enter the 5-digit code sent to <b>{email}</b>. It may take up to 15 minutes to arrive.</p>
-          <div className="demo-code">Demo mode: no email is sent. Your code is <b>{sent}</b></div>
-          <CodeInput value={code} onChange={(v) => { setCode(v); setErr(""); }} />
-          {err && <p className="ferr center">{err}</p>}
-          <button type="button" className="btn solid wide" disabled={code.replace(/ /g, "").length < 5} onClick={verify}>Continue</button>
-          <p className="alt">Didn't get a code? <button type="button" className="inline-link" onClick={send}>Request new code</button></p>
-        </>)}
-        {step === "new" && (<>
-          <p className="auth-p">Choose a new password for your account.</p>
-          <Field label="New password" type="password" value={pw} onChange={(v) => { setPw(v); setErr(""); }} error={err} hint="At least 8 characters" autoComplete="new-password" />
-          <button type="button" className="btn solid wide" onClick={save}>Save password</button>
+          <button type="submit" className="btn solid wide" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
+        </>) : (<>
+          <p className="auth-p">If an account exists for <b>{email}</b>, a reset link is on its way. It can take a few minutes. Check spam if you don't see it.</p>
+          <button type="button" className="btn solid wide" onClick={send} disabled={busy}>Send it again</button>
         </>)}
         <p className="alt"><button type="button" className="inline-link" onClick={onBack}>Back to sign in</button></p>
-      </div>
+      </form>
+    </section>
+  );
+}
+
+/** shown after tapping the link in the reset email */
+export function NewPassword({ onDone }) {
+  const { toast } = useApp();
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const save = async (e) => {
+    e.preventDefault();
+    if (pw.length < 8) { setErr("Use at least 8 characters"); return; }
+    setBusy(true);
+    try { await authApi.setPassword(pw); toast("Password updated."); onDone(); }
+    catch (er) { setErr(niceError(er)); }
+    setBusy(false);
+  };
+  return (
+    <section className="screen auth light-auth">
+      <header className="auth-top"><span /><Logo kind="lockup" width={150} /></header>
+      <Wave fill="var(--blitz)" />
+      <form className="auth-body" onSubmit={save} noValidate>
+        <h2 className="auth-h">Choose a new password</h2>
+        <Field label="New password" type="password" value={pw} onChange={(v) => { setPw(v); setErr(""); }} error={err} hint="At least 8 characters" autoComplete="new-password" />
+        <button type="submit" className="btn solid wide" disabled={busy}>{busy ? "Saving…" : "Save password"}</button>
+      </form>
     </section>
   );
 }

@@ -1,11 +1,13 @@
 import { useRef, useState } from "react";
-import { Bell, Camera, Check, ChevronRight, Flag, Globe2, Ban, Heart, MapPin, MessageCircle, Settings as Cog, Trash2, UserCheck, UserPlus, Trophy, Briefcase, Users, ExternalLink, FileText, LogOut } from "lucide-react";
+import { Bell, Camera, ChevronRight, Download, Flag, Ban, Heart, MapPin, MessageCircle, Settings as Cog, Shield, Sparkles, Trash2, UserCheck, UserPlus, Trophy, Users, ExternalLink, FileText, LogOut, X } from "lucide-react";
 import { useApp } from "../store";
-import { ROLES } from "../data/seed";
+import { INTEREST_OPTIONS, ROLES } from "../data/seed";
+import { deleteMyAccount, exportMyData } from "../api/supa";
 import { Avatar, Confirm, Empty, Field, IconBtn, Pill, Ring, Screen, Sheet } from "../ui";
 import { ToggleRow } from "../controls";
-import { MentorActions } from "./Connect";
-import { InterestsSheet } from "./Jobs";
+import { MentorActions, setConnectSeg } from "./Connect";
+import { FeedbackSheet } from "./Feedback";
+import { LegalBody } from "./Legal";
 import { goalStats } from "./Goals";
 import { plural, resizeImage, timeAgo } from "../util";
 
@@ -15,9 +17,29 @@ export function useOpenTarget() {
   return (to) => {
     if (!to) return;
     const tabs = ["home", "goals", "tips", "jobs", "connect"];
+    if (to.name === "connect" && to.params?.view) setConnectSeg(to.params.view);
     if (tabs.includes(to.name)) tab(to.name);
     else go(to.name, to.params || {});
   };
+}
+
+/** the "current interests / suggested for you" pop-up from the prototype */
+export function InterestsSheet({ open, onClose }) {
+  const { me, act } = useApp();
+  const toggle = (i) => act("updateMe", { interests: me.interests.includes(i) ? me.interests.filter((x) => x !== i) : [...me.interests, i] });
+  const rest = INTEREST_OPTIONS.filter((i) => !me.interests.includes(i));
+  return (
+    <Sheet open={open} onClose={onClose} title="Your interests" tall>
+      <h4 className="sheet-h4">Your current interests</h4>
+      <div className="pills-wrap tight">
+        {me.interests.length === 0 && <p className="sheet-text">None yet. Pick a few below.</p>}
+        {me.interests.map((i) => <Pill key={i} variant="chip-dark" active onClick={() => toggle(i)}>{i} <X size={13} strokeWidth={3} /></Pill>)}
+      </div>
+      <h4 className="sheet-h4">Suggested for you…</h4>
+      <div className="pills-wrap tight">{rest.map((i) => <Pill key={i} variant="chip-dark" onClick={() => toggle(i)}>{i}</Pill>)}</div>
+      <button type="button" className="btn solid wide mt" onClick={onClose}>Done</button>
+    </Sheet>
+  );
 }
 
 /* --------------------------------- profile --------------------------------- */
@@ -48,9 +70,10 @@ export function Profile({ id }) {
         <div className="prof-meta">
           {loc && <span><MapPin size={14} /> {loc}</span>}
           {p.role && <Pill variant="chip-dark">{p.role}</Pill>}
+          {p.mentor && <Pill variant="solid"><Sparkles size={12} /> Mentor</Pill>}
         </div>
         <div className="stats3">
-          <div><b>{isMe ? db.connections.length : p.years || 0}</b><span>{isMe ? "Connections" : "Yrs in sports"}</span></div>
+          <div><b>{(isMe ? db.goals : p.goals).filter((g) => g.completedAt).length}</b><span>Goals done</span></div>
           <div><b>{goals.length}</b><span>Public goals</span></div>
           <div><b>{posts.length}</b><span>Posts</span></div>
         </div>
@@ -123,7 +146,7 @@ export function Profile({ id }) {
         <div className="menu-list">
           <p className="sheet-text">Why are you reporting this? Reports are private.</p>
           {["Spam or scam", "Harassment or hate", "Fake profile", "Something else"].map((r) => (
-            <button key={r} type="button" onClick={() => { act("report", { kind: "profile", id: p.id, reason: r }); setReporting(false); toast("Thanks for reporting. Our team will review it."); }}>{r}</button>
+            <button key={r} type="button" onClick={() => { act("report", { kind: "profile", id: p.id, reason: r, snapshot: p.name }); setReporting(false); toast("Thanks for reporting. Our team will review it."); }}>{r}</button>
           ))}
         </div>
       </Sheet>
@@ -198,9 +221,27 @@ export function EditProfile() {
 /* ---------------------------------- settings ---------------------------------- */
 export function Settings() {
   const { db, me, act, back, A, toast, go } = useApp();
-  const [reset, setReset] = useState(false);
   const [legal, setLegal] = useState(false);
+  const [feedback, setFeedback] = useState(false);
+  const [del, setDel] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const blocked = db.blocked.map((id) => db.people.find((p) => p.id === id)).filter(Boolean);
+
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      const data = await exportMyData(me.userId);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "her-game-plan-my-data.json"; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast("Your data was downloaded");
+    } catch (e) { toast("Couldn't export your data. Try again.", "note"); }
+    setExporting(false);
+  };
+  const doDelete = async () => {
+    try { await deleteMyAccount(); } catch (e) { toast("Couldn't delete your account. Please try again.", "note"); }
+  };
 
   return (
     <Screen title="Settings" onBack={back}>
@@ -212,8 +253,19 @@ export function Settings() {
       </section>
 
       <section className="card pad">
+        <h3 className="sec-h">Mentoring</h3>
+        {me.mentor ? (
+          <div className="rowbtn static"><span><b>You're an approved mentor</b><small>{me.capacity || "Mentees can request you from the Mentors tab."}</small></span><Sparkles size={18} /></div>
+        ) : db.mentorApp?.status === "pending" ? (
+          <div className="rowbtn static"><span><b>Application under review</b><small>We'll notify you when you're approved.</small></span></div>
+        ) : (
+          <button type="button" className="rowbtn" onClick={() => go("mentorApply")}><span><b>Apply to be a mentor</b><small>Share your experience with women starting out</small></span><ChevronRight size={18} /></button>
+        )}
+      </section>
+
+      <section className="card pad">
         <h3 className="sec-h">Notifications</h3>
-        <ToggleRow title="In-app alerts" text="Pop-ups when someone cheers, replies, or responds to your requests." checked={db.settings.notifications} onChange={(v) => act("setSetting", { key: "notifications", value: v })} />
+        <ToggleRow title="In-app alerts" text="Pop-ups when someone cheers, replies, messages you, or responds to your requests." checked={db.settings.notifications} onChange={(v) => act("setSetting", { key: "notifications", value: v })} />
       </section>
 
       <section className="card pad">
@@ -228,32 +280,37 @@ export function Settings() {
       </section>
 
       <section className="card pad">
-        <h3 className="sec-h">About</h3>
-        <button type="button" className="rowbtn" onClick={() => setLegal(true)}><span><b>Terms &amp; Privacy</b><small>Community standards and your data</small></span><ChevronRight size={18} /></button>
-        <p className="body-p small">Her Game Plan · The Women Playmakers' Network · v1.0</p>
+        <h3 className="sec-h">Help us improve</h3>
+        <button type="button" className="rowbtn" onClick={() => setFeedback(true)}><span><b>Send feedback</b><small>Ideas, bugs, or anything on your mind</small></span><ChevronRight size={18} /></button>
       </section>
 
-      <section className="card pad demo-box">
-        <h3 className="sec-h">Demo mode</h3>
-        <p className="body-p">Other members, replies, and reactions are simulated, and everything you do is saved only in this browser. A backend would make it live for everyone.</p>
-        <button type="button" className="btn ghost-dark wide" onClick={() => setReset(true)}><Trash2 size={16} /> Reset demo data</button>
+      {me.isAdmin && (
+        <section className="card pad">
+          <h3 className="sec-h">Admin</h3>
+          <button type="button" className="rowbtn" onClick={() => go("admin")}><span><b>Admin dashboard</b><small>Stats, reports, mentors, feedback, content</small></span><Shield size={18} /></button>
+        </section>
+      )}
+
+      <section className="card pad">
+        <h3 className="sec-h">Privacy &amp; data</h3>
+        <button type="button" className="rowbtn" onClick={() => setLegal(true)}><span><b>Terms &amp; Privacy</b><small>Community standards and your data</small></span><ChevronRight size={18} /></button>
+        <button type="button" className="rowbtn" onClick={doExport} disabled={exporting}><span><b>{exporting ? "Preparing…" : "Download my data"}</b><small>A copy of everything you've shared</small></span><Download size={18} /></button>
+        <button type="button" className="rowbtn danger" onClick={() => setDel(true)}><span><b>Delete my account</b><small>Permanently removes your profile, goals, posts, and messages</small></span><Trash2 size={18} /></button>
+        <p className="body-p small">Her Game Plan · The Women Playmakers' Network · early access</p>
       </section>
 
       <button type="button" className="btn white wide mt" onClick={() => A.signOut()}><LogOut size={17} /> Sign out</button>
 
-      <Confirm open={reset} title="Reset all demo data?" text="This clears your account, goals, applications, and messages from this browser and restores the sample content." confirmLabel="Reset everything" danger
-        onConfirm={() => { act("resetAll"); }} onClose={() => setReset(false)} />
-      <Sheet open={legal} onClose={() => setLegal(false)} title="Terms & Privacy" tall>
-        <p className="sheet-text"><b>Placeholder text.</b> Replace with lawyer-reviewed Terms of Service and a Privacy Policy before launch.</p>
-        <h4 className="sheet-h4">Community standards</h4>
-        <p className="sheet-text">Be supportive. No harassment, discrimination, or spam. Job posts must be real opportunities. You can report or block any member at any time.</p>
-      </Sheet>
+      <Confirm open={del} title="Delete your account?" text="This permanently deletes your profile, goals, posts, comments, and messages. It can't be undone." confirmLabel="Delete everything" danger
+        onConfirm={doDelete} onClose={() => setDel(false)} />
+      <FeedbackSheet open={feedback} onClose={() => setFeedback(false)} />
+      <Sheet open={legal} onClose={() => setLegal(false)} title="Terms & Privacy" tall><LegalBody /></Sheet>
     </Screen>
   );
 }
 
 /* ------------------------------- notifications ------------------------------- */
-const KIND_ICON = { cheer: Heart, message: MessageCircle, application: Briefcase, mentor: Users, like: Heart, welcome: Trophy };
+const KIND_ICON = { cheer: Heart, message: MessageCircle, comment: MessageCircle, mentor: Users, like: Heart, welcome: Trophy };
 
 export function Notifications() {
   const { db, back, act } = useApp();

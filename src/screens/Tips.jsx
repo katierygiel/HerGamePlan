@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bookmark, MessageCircle, Pause, Play } from "lucide-react";
 import { useApp } from "../store";
 import { VIDEO } from "../data/seed";
-import { Avatar, Comment, Composer, Empty, Pill, Screen, Sheet } from "../ui";
+import { Comment, Composer, Empty, Logo, Pill, Screen, Sheet } from "../ui";
 import { plural } from "../util";
 
 /* ------------------------------ video player ------------------------------ */
@@ -47,22 +47,22 @@ export function VideoModal({ open, onClose }) {
           <li key={s}><button type="button" className={chapter[0] === s ? "on" : ""} onClick={() => { setT(s); setPlaying(true); }}><span>{fmt(s)}</span>{label}</button></li>
         ))}
       </ul>
-      <p className="sheet-text small">Preview player. Swap in your real video file to play footage here.</p>
+      <p className="sheet-text small"><b>Concept sample.</b> This preview shows how the weekly video will look. Real episodes are coming.</p>
     </Sheet>
   );
 }
 
 /* ------------------------------ article card ------------------------------ */
 export function ArticleCard({ a }) {
-  const { db, go, act, person, toast } = useApp();
+  const { db, go, act, toast } = useApp();
   const saved = db.bookmarks.includes(a.id);
   return (
     <article className="card artcard" onClick={() => go("article", { id: a.id })}>
-      <Pill variant="chip-dark" className="cat">{a.cat}</Pill>
+      <Pill variant="chip-dark" className="cat">{a.cat}</Pill>{a.isSample && <Pill variant="tag" className="sample">Concept sample</Pill>}
       <h3>{a.title}</h3>
       <p>{a.excerpt}</p>
       <div className="art-meta">
-        <span className="by"><Avatar person={person(a.authorId)} size={24} />{a.author}</span>
+        <span className="by"><Logo kind="icon" tone="purple" width={22} />{a.author}</span>
         <span className="mm"><MessageCircle size={14} /> {a.comments.length}</span>
         <span className="mm">{a.read} min</span>
         <button type="button" className={`bm ${saved ? "on" : ""}`} aria-pressed={saved} aria-label={saved ? "Remove bookmark" : "Bookmark article"}
@@ -93,11 +93,10 @@ export default function Tips() {
           <span className="vow-bar"><i /></span>
         </button>
         <div className="vow-info">
-          <p className="up">{VIDEO.series}<br />with {VIDEO.name}</p>
+          <p className="up">{VIDEO.series}</p>
           <p className="up">{VIDEO.role}</p>
-          <p className="up">{VIDEO.location}</p>
-          <button type="button" className="underline-link" onClick={() => go("profile", { id: VIDEO.personId })}>See profile</button>
-          <img src={VIDEO.photo} alt={VIDEO.name} className="vow-face" />
+          <p className="up sample-flag">Concept sample</p>
+          <img src={VIDEO.photo} alt="" className="vow-face" />
         </div>
       </div>
       <p className="vow-blurb">{VIDEO.blurb}</p>
@@ -116,13 +115,12 @@ export default function Tips() {
 
 /* ------------------------------- reader ------------------------------- */
 export function Article({ id }) {
-  const { db, back, go, act, person, toast } = useApp();
+  const { db, back, go, act, toast } = useApp();
   const a = db.articles.find((x) => x.id === id);
   if (!a) return <Screen title="Article" onBack={back}><Empty title="Article not found" /></Screen>;
   const saved = db.bookmarks.includes(a.id);
-  const author = person(a.authorId);
   return (
-    <Screen variant="light" title={a.title} sub={`${a.author} | ${a.role}`} onBack={back} className="reader">
+    <Screen variant="light" title={a.title} sub={a.role ? `${a.author} | ${a.role}` : a.author} onBack={back} className="reader">
       {a.photo && <img className="art-photo" src={a.photo} alt="" />}
       <div className="prose">
         {a.blocks.map((b, i) => (
@@ -138,10 +136,12 @@ export function Article({ id }) {
         </button>
         <button type="button" className="btn solid" onClick={() => go("discussion", { id: a.id })}><MessageCircle size={17} /> Open discussion · {a.comments.length}</button>
       </div>
-      <button type="button" className="authorbox" onClick={() => go("profile", { id: author.id })}>
-        <Avatar person={author} size={46} />
-        <span><b>{a.author}</b><small>{author.mentor ? "Available as a mentor. View profile" : "View profile"}</small></span>
-      </button>
+      {a.isSample && (
+        <div className="authorbox static">
+          <Logo kind="icon" tone="purple" width={40} />
+          <span><b>Concept sample</b><small>This article shows the format. It wasn't written by a real professional.</small></span>
+        </div>
+      )}
     </Screen>
   );
 }
